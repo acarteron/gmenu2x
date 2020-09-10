@@ -118,7 +118,7 @@ const string &Link::getTitle() const {
 }
 
 const string &Link::getShortTitle() const {
-	return shorttitle;
+	return title;
 }
 
 void Link::setTitle(const string &title) {
