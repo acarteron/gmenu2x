@@ -126,7 +126,7 @@ void Link::setTitle(const string &title) {
     if (gmenu2x.font->getTextWidth(shorttitle)>gmenu2x.skinConfInt["linkWidth"]) {
         while (gmenu2x.font->getTextWidth(shorttitle+"..")>gmenu2x.skinConfInt["linkWidth"])
             shorttitle = shorttitle.substr(0,shorttitle.length()-1);
-            shorttitle += "..";
+        shorttitle += "..";
     }
     this->shorttitle = shorttitle;
     this->title = title;
