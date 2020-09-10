@@ -117,10 +117,24 @@ const string &Link::getTitle() const {
 	return title;
 }
 
+const string &Link::getShortTitle() const {
+	return shorttitle;
+}
+
 void Link::setTitle(const string &title) {
-	this->title = title;
-	updateTitleSurface();
-	edited = true;
+  std::string shorttitle = title;
+    if (gmenu2x.font->getTextWidth(shorttitle)>gmenu2x.skinConfInt["linkWidth"]) {
+        while (gmenu2x.font->getTextWidth(shorttitle+"..")>gmenu2x.skinConfInt["linkWidth"])
+            shorttitle = shorttitle.substr(0,shorttitle.length()-1);
+            shorttitle += "..";
+    }
+    textSurface = gmenu2x.font->render(shorttitle);
+    cachedFont = gmenu2x.font.get();
+    
+    this->shorttitle = shorttitle;
+    this->title = title;
+    updateTitleSurface();
+    edited = true;
 }
 
 const string &Link::getDescription() const {

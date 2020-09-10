@@ -62,12 +62,12 @@ bool SettingsDialog::exec() {
 
 		bg.blit(s, 0, 0);
 
-		gmenu2x.drawTopBar(s);
+		//gmenu2x.drawTopBar(s);
 		//link icon
 		drawTitleIcon(s, icon);
 		writeTitle(s, text);
 
-		gmenu2x.drawBottomBar(s);
+		//gmenu2x.drawBottomBar(s);
 
 		if (sel>firstElement+numRows-1) firstElement=sel-numRows+1;
 		if (sel<firstElement) firstElement=sel;

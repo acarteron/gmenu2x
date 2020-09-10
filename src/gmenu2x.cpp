@@ -687,7 +687,7 @@ void GMenu2X::showSettings() {
 	sd.addSetting(unique_ptr<MenuSetting>(new MenuSettingInt(
 			*this, tr["Screen Timeout"],
 			tr["Set screen's backlight timeout in seconds"],
-			&confInt["backlightTimeout"], 0, 120)));
+			&confInt["backlightTimeout"], 0, 180)));
 	sd.addSetting(unique_ptr<MenuSetting>(new MenuSettingInt(
 			*this, tr["Button repeat rate"],
 			tr["Set button repetitions per second"],
@@ -803,7 +803,7 @@ void GMenu2X::setSkin(const string &skin, bool setWallpaper) {
 	evalIntConf(skinConfInt, "topBarHeight", 50, 32, 120);
 	evalIntConf(skinConfInt, "bottomBarHeight", 20, 20, 120);
 	evalIntConf(skinConfInt, "linkHeight", 50, 32, 120);
-	evalIntConf(skinConfInt, "linkWidth", 80, 32, 120);
+	evalIntConf(skinConfInt, "linkWidth", 80, 32, 180);
 
 	const bool fontChanged = initFont();
 	if (menu != nullptr) {
