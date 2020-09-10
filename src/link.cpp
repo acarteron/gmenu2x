@@ -128,9 +128,6 @@ void Link::setTitle(const string &title) {
             shorttitle = shorttitle.substr(0,shorttitle.length()-1);
             shorttitle += "..";
     }
-    textSurface = gmenu2x.font->render(shorttitle);
-    cachedFont = gmenu2x.font.get();
-    
     this->shorttitle = shorttitle;
     this->title = title;
     updateTitleSurface();
