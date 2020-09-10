@@ -26,7 +26,7 @@ void Background::paint(Surface& s) {
 
 	auto icon = battery.getIcon();
 	if (icon) {
-		icon->blit(s, s.width() - 19(icon->width() * 1.2 ), s.height() - (gmenu2x.skinConfInt["bottomBarHeight"] + icon->height()) / 2);
+		icon->blit(s, s.width() - (icon->width() * 1.2 ), s.height() - (gmenu2x.skinConfInt["bottomBarHeight"] + icon->height()) / 2);
 	}
 }
 
