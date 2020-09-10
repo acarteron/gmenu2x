@@ -326,7 +326,7 @@ bool LinkApp::save() {
 
 	std::ostringstream out;
 	if (!isOpk()) {
-		if (!getTitle().empty()       ) out << "title="      << getShortTitle()      << endl;
+		if (!getTitle().empty()       ) out << "title="      << getTitle()      << endl;
 		if (!getDescription().empty() ) out << "description="<< getDescription()<< endl;
 		if (!launchMsg.empty()   ) out << "launchmsg="       << launchMsg       << endl;
 		if (!icon.empty()        ) out << "icon="            << icon            << endl;
