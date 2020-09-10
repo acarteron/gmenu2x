@@ -875,7 +875,7 @@ void GMenu2X::editLink() {
 	string oldSection = menu->selSection();
 	string newSection = oldSection;
 
-	string linkTitle = linkApp->getTitle();
+	string linkTitle = linkApp->getShortTitle();
 	string linkDescription = linkApp->getDescription();
 	string linkIcon = linkApp->getIcon();
 	string linkManual = linkApp->getManual();
