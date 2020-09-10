@@ -84,8 +84,8 @@ bool WallpaperDialog::exec()
 		//Wallpaper
 		gmenu2x.sc[((string)"skin:wallpapers/" + wallpapers[selected]).c_str()]->blit(s, 0, 0);
 
-		gmenu2x.drawTopBar(s);
-		gmenu2x.drawBottomBar(s);
+		// gmenu2x.drawTopBar(s);
+		// gmenu2x.drawBottomBar(s); 
 
 		drawTitleIcon(s, "icons/wallpaper.png", true);
 		writeTitle(s, gmenu2x.tr["Wallpaper selection"]);
