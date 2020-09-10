@@ -53,7 +53,7 @@ void Link::updateTextSurfaces() {
 
 void Link::updateTitleSurface() {
 	if (!title.empty()) {
-		titleSurface = gmenu2x.font->render(title);
+		titleSurface = gmenu2x.font->render(shorttitle);
 	} else {
 		titleSurface = nullptr;
 	}
