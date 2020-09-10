@@ -103,7 +103,7 @@ Menu::Menu(GMenu2X& gmenu2x)
 #endif
 
 	btnContextMenu.setPosition(gmenu2x.width() - 38,
-				   gmenu2x.bottomBarIconY);
+				   gmenu2x.height() - gmenu2x.skinConfInt["bottomBarHeight"] / 2);
 
 	updateSectionTextSurfaces();
 }
@@ -142,7 +142,7 @@ void Menu::skinUpdated() {
 
 	//recalculate some coordinates based on the new element sizes
 	linkColumns = (gmenu2x.width() - 10) / skinConfInt["linkWidth"];
-	linkRows = (gmenu2x.height() - 35 - skinConfInt["topBarHeight"])
+	linkRows = (gmenu2x.height() - gmenu2x.skinConfInt["bottomBarHeight"] - gmenu2x.skinConfInt["topBarHeight"])
 		 / skinConfInt["linkHeight"];
 
 	//reload section icons
@@ -252,7 +252,7 @@ void Menu::paint(Surface &s) {
 			l_button->blit(s, 0, 0);
 		auto r_button = sc.skinRes("imgs/section-r.png");
 		if (r_button)
-			r_button->blit(s, width - 10, 0);
+			r_button->blit(s, width - r_button->width(), 0);
 	}
 
 	auto& sectionLinks = links[iSection];
@@ -266,7 +266,7 @@ void Menu::paint(Surface &s) {
 	const int linkMarginX = (
 			width - linkWidth * linkColumns - linkSpacingX * (linkColumns - 1)
 			) / 2;
-	const int linkSpacingY = (height - 35 - topBarHeight - linkRows * linkHeight) / linkRows;
+	const int linkSpacingY = (height - bottomBarHeight - topBarHeight - linkRows * linkHeight) / linkRows;
 	for (uint32_t i = iFirstDispRow * linkColumns; i < iFirstDispRow * linkColumns + linksPerPage && i < numLinks; i++) {
 		const int ir = i - iFirstDispRow * linkColumns;
 		const int x = linkMarginX + (ir % linkColumns) * (linkWidth + linkSpacingX);
@@ -287,13 +287,15 @@ void Menu::paint(Surface &s) {
 	if (linkApp && linkApp->isEditable()) {
 #ifdef ENABLE_CPUFREQ
 		font.write(s, gmenu2x.cpu.freqStr(linkApp->clock()),
-				gmenu2x.cpuX, gmenu2x.bottomBarTextY,
+				gmenu2x.cpuX, gmenu2x.height() - bottomBarHeight / 2,
 				Font::HAlignLeft, Font::VAlignMiddle);
 #endif
 		//Manual indicator
-		if (!linkApp->getManual().empty())
-			sc.skinRes("imgs/manual.png")->blit(
-					s, gmenu2x.manualX, gmenu2x.bottomBarIconY);
+		if (!linkApp->getManual().empty()) {
+                  auto manual_img = sc.skinRes("imgs/manual.png");
+                  manual_img->blit(s,
+                                   gmenu2x.manualX, gmenu2x.height() - (bottomBarHeight / 2 + manual_img->height() / 2));
+                }
 	}
 }
 

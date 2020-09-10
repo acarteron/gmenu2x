@@ -294,26 +294,37 @@ void GMenu2X::initBG() {
 	drawBottomBar(*bg);
 
 	bgmain.reset(new OffscreenSurface(*bg));
-
+        unsigned int bottomBarElementX = 0; 
 	{
 		auto sd = OffscreenSurface::loadImage(
 				sc.getSkinFilePath("imgs/sd.png"));
-		if (sd) sd->blit(*bgmain, 3, bottomBarIconY);
+		if (sd){
+                  bottomBarElementX = sd->width() * .2;
+                  sd->blit(*bgmain, bottomBarElementX,  height() - (skinConfInt["bottomBarHeight"] + sd->height()) / 2);
+                  bottomBarElementX += sd->width() * 1.1;
+                }
 	}
 
-	cpuX = 32 + font->write(*bgmain, getDiskFree(getHome().c_str()),
-			22, bottomBarTextY, Font::HAlignLeft, Font::VAlignMiddle);
+        bottomBarElementX += font->write(*bgmain, 
+                                         getDiskFree(getHome().c_str()),
+                                         bottomBarElementX, 
+                                         height() - skinConfInt["bottomBarHeight"] / 2, 
+                                         Font::HAlignLeft, 
+                                         Font::VAlignMiddle) * 1.15;
 
 #ifdef ENABLE_CPUFREQ
 	{
 		auto cpu_img = OffscreenSurface::loadImage(
 				sc.getSkinFilePath("imgs/cpu.png"));
-		if (cpu_img) cpu_img->blit(*bgmain, cpuX, bottomBarIconY);
+		if (cpu_img) {
+                  cpu_img->blit(*bgmain, bottomBarElementX, height() - (skinConfInt["bottomBarHeight"] + cpu_img->height()) / 2);
+                  bottomBarElementX += cpu_img->width() * 1.1;
+                }
 	}
-	cpuX += 19;
-	manualX = cpuX + font->getTextWidth("300MHz") + 5;
+	cpuX += bottomBarElementX;
+	bottomBarElementX = cpuX + font->getTextWidth("1000MHz") + 1.15;
 #else
-	manualX = cpuX;
+	manualX = bottomBarElementX;
 #endif
 
 	int serviceX = width() - 38;
@@ -321,20 +332,27 @@ void GMenu2X::initBG() {
 		if (web) {
 			auto webserver = OffscreenSurface::loadImage(
 					sc.getSkinFilePath("imgs/webserver.png"));
-			if (webserver) webserver->blit(*bgmain, serviceX, bottomBarIconY);
-			serviceX -= 19;
+			serviceX -= webserver->width() * .2;
+                        webserver->blit(*bgmain, serviceX, height() - (skinConfInt["bottomBarHeight"] + webserver->height()) / 2);
+                        serviceX -= webserver->width() * 1.15;
 		}
 		if (samba) {
 			auto sambaS = OffscreenSurface::loadImage(
 					sc.getSkinFilePath("imgs/samba.png"));
-			if (sambaS) sambaS->blit(*bgmain, serviceX, bottomBarIconY);
-			serviceX -= 19;
+			if (sambaS)  {
+                          serviceX -= sambaS->width() * .2;
+                          sambaS->blit(*bgmain, serviceX, height() - (skinConfInt["bottomBarHeight"] + sambaS->height()) / 2);
+                          serviceX -= sambaS->width() * 1.15;
+                        }
 		}
 		if (inet) {
 			auto inetS = OffscreenSurface::loadImage(
 					sc.getSkinFilePath("imgs/inet.png"));
-			if (inetS) inetS->blit(*bgmain, serviceX, bottomBarIconY);
-			serviceX -= 19;
+			if (inetS) {
+                          serviceX -= inetS->width() * .2;
+                          inetS->blit(*bgmain, serviceX, height() - (skinConfInt["bottomBarHeight"] + inetS->height()) / 2);
+                          serviceX -= inetS->width() * 1.15;
+                        }
 		}
 	}
 	(void)serviceX;
@@ -463,7 +481,7 @@ void GMenu2X::readConfig(string conffile) {
 		confStr["skin"] = "Default";
 
 	evalIntConf( confInt, "outputLogs", 0, 0,1 );
-	evalIntConf( confInt, "backlightTimeout", 15, 0,120 );
+	evalIntConf( confInt, "backlightTimeout", 15, 0, 180 );
 	evalIntConf( confInt, "buttonRepeatRate", 10, 0, 20 );
 	evalIntConf( confInt, "videoBpp", 32, 16, 32 );
 
@@ -997,14 +1015,13 @@ int GMenu2X::drawButton(Surface& surface, const string &btn,
 	int w = 0;
 	auto icon = sc["skin:imgs/buttons/" + btn + ".png"];
 	if (icon) {
-		if (y < 0) y = height() + y;
+		if (y < 0) y = height();
 		w = icon->width();
-		icon->blit(surface, x, y - 7);
+		icon->blit(surface, x, icon->height() / 2);
 		if (!text.empty()) {
-			w += 3;
+			w += 1.3;
 			w += font->write(surface, text, x + w, y,
-					 Font::HAlignLeft, Font::VAlignMiddle);
-			w += 6;
+					 Font::HAlignLeft, Font::VAlignMiddle * 1.15);
 		}
 	}
 	return x + w;
@@ -1017,12 +1034,12 @@ int GMenu2X::drawButtonRight(Surface& surface, const string &btn,
 	if (icon) {
 		if (y < 0) y = height() + y;
 		w = icon->width();
-		icon->blit(surface, x - w, y - 7);
+                y -= icon->height() / 2;
+		icon->blit(surface, x - w, y);
 		if (!text.empty()) {
-			w += 3;
+			w += 1.1;
 			w += font->write(surface, text, x - w, y,
-					 Font::HAlignRight, Font::VAlignMiddle);
-			w += 6;
+					 Font::HAlignRight, Font::VAlignMiddle * 1.15);
 		}
 	}
 	return x - w;
