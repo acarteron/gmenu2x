@@ -4,10 +4,15 @@
 #ifndef FONT_H
 #define FONT_H
 
-#include <SDL_ttf.h>
+#include <cstdint>
 #include <memory>
 #include <string>
 
+#include <SDL_ttf.h>
+
+#include "font_spec.h"
+
+class FontStack;
 class OffscreenSurface;
 class Surface;
 
@@ -21,54 +26,45 @@ public:
 	enum HAlign { HAlignLeft, HAlignRight,  HAlignCenter };
 	enum VAlign { VAlignTop,  VAlignBottom, VAlignMiddle };
 
-	Font(std::string path, unsigned int size);
+	Font() = default;
+
+	// Returns `true` on success.
+	bool Load(FontSpec spec);
+
+	// Moveable but not copyable.
+	Font(const Font &other) = delete;
+	Font(Font &&other) noexcept;
+	Font& operator=(const Font& other) = delete;
+	Font& operator=(Font&& other) noexcept;
+
 	~Font();
-
-	std::string wordWrap(const std::string &text, int width);
-
-	int getTextWidth(const std::string& text) const;
-	int getTextHeight(const std::string& text) const;
 
 	int getLineSpacing() const
 	{
 		return lineSpacing;
 	}
 
-	/**
-	 * Draws a text on a surface in this font.
-	 * @return The width of the text in pixels.
-	 */
-	int write(Surface& surface,
-				const std::string &text, int x, int y,
-				HAlign halign = HAlignLeft, VAlign valign = VAlignTop);
-
-	std::unique_ptr<OffscreenSurface> render(const std::string& text) const;
-
-	const std::string &path() const {
-		return path_;
+	bool HasGlyph(std::uint16_t code_point) const {
+		return TTF_GlyphIsProvided(font, code_point);
 	}
 
-	unsigned int size() const {
-		return size_;
-	}
+	const FontSpec& spec() const { return spec_; }
 
 private:
 	Font(TTF_Font *font);
-
-	std::string wordWrapSingleLine(const std::string &text,
-				size_t start, size_t end, int width);
 
 	/**
 	 * Draws a single line of text on a surface in this font.
 	 * @return The width of the text in pixels.
 	 */
-	int writeLine(Surface& surface, std::string const& text,
-				int x, int y, HAlign halign, VAlign valign);
+	int writeLine(Surface& surface, const std::uint16_t *text, int x, int y,
+	              HAlign halign, VAlign valign) const;
 
 	TTF_Font *font;
 	int lineSpacing;
-	std::string path_;
-	unsigned int size_;
+	FontSpec spec_;
+
+	friend class FontStack;
 };
 
 #endif /* FONT_H */

@@ -2,7 +2,8 @@
 
 #include "dialog.h"
 #include "gmenu2x.h"
-#include "font.h"
+#include "font_stack.h"
+#include "word_wrap.h"
 
 Dialog::Dialog(GMenu2X& gmenu2x) : gmenu2x(gmenu2x)
 {
@@ -31,8 +32,7 @@ void Dialog::writeTitle(Surface& s, const std::string &title)
 
 void Dialog::writeSubTitle(Surface& s, const std::string &subtitle)
 {
-	std::string wrapped = gmenu2x.font->wordWrap(subtitle,
-						     gmenu2x.width() - 48);
+	std::string wrapped = wordWrap(*gmenu2x.font, subtitle, gmenu2x.width() - 48);
 	gmenu2x.font->write(s, wrapped, 40,
 			gmenu2x.skinConfInt["topBarHeight"]
 				- gmenu2x.font->getTextHeight(wrapped),

@@ -1,6 +1,7 @@
 #include "font.h"
 
 #include "debug.h"
+#include "split_by_char.h"
 #include "surface.h"
 #include "utilities.h"
 
@@ -11,29 +12,47 @@
 #include <cassert>
 #include <vector>
 
-using namespace std;
+Font::Font(Font &&other) noexcept
+    : font(other.font),
+      lineSpacing(other.lineSpacing),
+      spec_(std::move(other.spec_)) {
+	other.font = nullptr;
+}
 
-Font::Font(std::string path, unsigned int size) :
-path_(std::move(path)), size_(size)
+Font &Font::operator=(Font &&other) noexcept {
+	if (font) {
+		TTF_CloseFont(font);
+		TTF_Quit();
+	}
+	font = other.font;
+	other.font = nullptr;
+	lineSpacing = other.lineSpacing;
+	spec_ = std::move(other.spec_);
+	return *this;
+}
+
+bool Font::Load(FontSpec spec)
 {
-	font = nullptr;
-	lineSpacing = 1;
+	spec_ = std::move(spec);
 
 	/* Note: TTF_Init and TTF_Quit perform reference counting, so call them
 	 * both unconditionally for each font. */
 	if (TTF_Init() < 0) {
 		ERROR("Unable to init SDL_ttf library\n");
-		return;
+		return false;
 	}
 
-	font = TTF_OpenFont(path_.c_str(), size);
-	if (!font) {
-		ERROR("Unable to open font '%s'\n", path.c_str());
-		TTF_Quit();
-		return;
+	font = TTF_OpenFont(spec_.path.c_str(), spec_.size);
+	if (font) {
+		INFO("Loaded font '%s'\n", spec_.path.c_str());
+	} else {
+		WARNING("Unable to open font '%s'\n", spec_.path.c_str());
+		SDL_ClearError();
+		return false;
 	}
 
 	lineSpacing = TTF_FontLineSkip(font);
+	return true;
 }
 
 Font::~Font()
@@ -44,179 +63,9 @@ Font::~Font()
 	}
 }
 
-int Font::getTextWidth(const string &text) const
-{
-	if (!font) {
-		return 1;
-	}
-
-	int w;
-	size_t pos = text.find('\n', 0);
-	if (pos == string::npos) {
-		TTF_SizeUTF8(font, text.c_str(), &w, nullptr);
-		return w;
-	} else {
-		int maxWidth = 1;
-		size_t prev = 0;
-		do {
-			TTF_SizeUTF8(font, text.substr(prev, pos - prev).c_str(), &w, nullptr);
-			maxWidth = max(w, maxWidth);
-			prev = pos + 1;
-			pos = text.find('\n', prev);
-		} while (pos != string::npos);
-		TTF_SizeUTF8(font, text.substr(prev).c_str(), &w, nullptr);
-		return max(w, maxWidth);
-	}
-}
-
-string Font::wordWrap(const string &text, int width)
-{
-	const size_t len = text.length();
-	string result;
-	result.reserve(len);
-
-	size_t start = 0;
-	while (true) {
-		size_t end = min(text.find('\n', start), len);
-		result.append(wordWrapSingleLine(text, start, end, width));
-		start = end + 1;
-		if (start >= len) {
-			break;
-		}
-		result.push_back('\n');
-	}
-
-	return result;
-}
-
-string Font::wordWrapSingleLine(const string &text, size_t start, size_t end, int width)
-{
-	string result;
-	result.reserve(end - start);
-
-	while (start != end) {
-		/* Clean the end of the string, allowing lines that are indented at
-		 * the start to stay as such. */
-		string run = rtrim(text.substr(start, end - start));
-		int runWidth = getTextWidth(run);
-
-		if (runWidth > width) {
-			size_t fits = 0, doesntFit = run.length();
-			/* First guess: width / runWidth approximates the proportion of
-			 * the run that should fit. */
-			size_t guess = min(run.length(), (size_t) (doesntFit * ((float) width / runWidth)));
-			/* Adjust that to fully include any partial UTF-8 character. */
-			while (guess < run.length() && !isUTF8Starter(run[guess])) {
-				guess++;
-			}
-
-			if (getTextWidth(run.substr(0, guess)) <= width) {
-				fits = guess;
-				doesntFit = fits;
-				/* Prime doesntFit, which should be closer to 2 * fits than
-				 * to run.length() / 2 if the run is long. */
-				do {
-					fits = doesntFit; // determined to fit by a previous iteration
-					doesntFit = min(2 * fits, run.length());
-					while (doesntFit < run.length() && !isUTF8Starter(run[doesntFit])) {
-						doesntFit++;
-					}
-				} while (doesntFit < run.length() && getTextWidth(run.substr(0, doesntFit)) <= width);
-			} else {
-				doesntFit = guess;
-			}
-
-			/* End this loop when N full characters fit but N + 1 don't. */
-			while (fits + 1 < doesntFit) {
-				size_t guess = fits + (doesntFit - fits) / 2;
-				if (!isUTF8Starter(run[guess])) {
-					size_t oldGuess = guess;
-					/* Adjust the guess to fully include a UTF-8 character. */
-					for (size_t offset = 1; offset < (doesntFit - fits) / 2 - 1; offset++) {
-						if (isUTF8Starter(run[guess - offset])) {
-							guess -= offset;
-							break;
-						} else if (isUTF8Starter(run[guess + offset])) {
-							guess += offset;
-							break;
-						}
-					}
-					/* If there's no such character, exit early. */
-					if (guess == oldGuess) {
-						break;
-					}
-				}
-				if (getTextWidth(run.substr(0, guess)) <= width) {
-					fits = guess;
-				} else {
-					doesntFit = guess;
-				}
-			}
-
-			/* The run shall be split at the last space-separated word that
-			 * fully fits, or otherwise at the last character that fits. */
-			size_t lastSpace = run.find_last_of(" \t\r", fits);
-			if (lastSpace != string::npos) {
-				fits = lastSpace;
-			}
-
-			/* If 0 characters fit, we'll have to make 1 fit anyway, otherwise
-			 * we're in for an infinite loop. This can happen if the font size
-			 * is large. */
-			if (fits == 0) {
-				fits = 1;
-				while (fits < run.length() && !isUTF8Starter(run[fits])) {
-					fits++;
-				}
-			}
-
-			result.append(rtrim(run.substr(0, fits))).append("\n");
-			start = min(end, text.find_first_not_of(" \t\r", start + fits));
-		} else {
-			result.append(rtrim(run));
-			start = end;
-		}
-	}
-
-	return result;
-}
-
-int Font::getTextHeight(const string &text) const
-{
-	int nLines = 1 + std::count(text.begin(), text.end(), '\n');
-	return nLines * getLineSpacing();
-}
-
-int Font::write(Surface& surface, const string &text,
-			int x, int y, HAlign halign, VAlign valign)
-{
-	if (!font) {
-		return 0;
-	}
-
-	size_t pos = text.find('\n', 0);
-	if (pos == string::npos) {
-		return writeLine(surface, text, x, y, halign, valign);
-	} else {
-		int maxWidth = 0;
-		size_t prev = 0;
-		do {
-			maxWidth = max(maxWidth,
-					writeLine(surface, text.substr(prev, pos - prev),
-						x, y, halign, valign));
-			y += lineSpacing;
-			prev = pos + 1;
-			pos = text.find('\n', prev);
-		} while (pos != string::npos);
-		return max(maxWidth,
-				writeLine(surface, text.substr(prev), x, y, halign, valign));
-	}
-}
-
-int Font::writeLine(Surface& surface, std::string const& text,
-				int x, int y, HAlign halign, VAlign valign)
-{
-	if (text.empty()) {
+int Font::writeLine(Surface& surface, const std::uint16_t *text, int x, int y,
+                    HAlign halign, VAlign valign) const {
+	if (*text == 0) {
 		// SDL_ttf will return a nullptr when rendering the empty string.
 		return 0;
 	}
@@ -233,9 +82,10 @@ int Font::writeLine(Surface& surface, std::string const& text,
 	}
 
 	SDL_Color color = { 0, 0, 0, 0 };
-	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text.c_str(), color);
+	SDL_Surface *s = TTF_RenderUNICODE_Blended(font, text, color);
 	if (!s) {
-		ERROR("Font rendering failed for text \"%s\"\n", text.c_str());
+		ERROR("Font rendering failed: %s\n", SDL_GetError());
+		SDL_ClearError();
 		return 0;
 	}
 	const int width = s->w;
@@ -275,99 +125,14 @@ int Font::writeLine(Surface& surface, std::string const& text,
 	color.g = 0xff;
 	color.b = 0xff;
 
-	s = TTF_RenderUTF8_Blended(font, text.c_str(), color);
+	s = TTF_RenderUNICODE_Blended(font, text, color);
 	if (!s) {
-		ERROR("Font rendering failed for text \"%s\"\n", text.c_str());
+		ERROR("Font rendering failed: %s\n", SDL_GetError());
+		SDL_ClearError();
 		return width;
 	}
 	SDL_BlitSurface(s, NULL, surface.raw, &rect);
 	SDL_FreeSurface(s);
 
 	return width;
-}
-
-static inline uint8_t *get_pixel8(SDL_Surface *s, int row, int col)
-{
-	uintptr_t row_addr = (uintptr_t)s->pixels + row * s->pitch;
-
-	assert(row < s->h);
-	assert(col < s->w);
-
-	return (uint8_t *)row_addr + col;
-}
-
-static inline uint32_t *get_pixel32(SDL_Surface *s, int row, int col)
-{
-	uintptr_t row_addr = (uintptr_t)s->pixels + row * s->pitch;
-
-	assert(row < s->h);
-	assert(col < s->w);
-
-	return (uint32_t *)row_addr + col;
-}
-
-std::unique_ptr<OffscreenSurface> Font::render(const std::string& line) const
-{
-	SDL_Color color = { 0, 0, 0 };
-	SDL_Surface *s, *raw;
-	unsigned int i, j;
-
-	s = TTF_RenderUTF8_Shaded(font, line.c_str(), color, color);
-	if (!s)
-		return std::unique_ptr<OffscreenSurface>();
-
-	raw = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA,
-				   s->w + 2, s->h + 2, 32,
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				   0xff << 8, 0xff << 16, 0xff << 24, 0xff
-#else
-				   0xff << 16, 0xff << 8, 0xff, 0xff << 24
-#endif
-				   );
-
-	for (unsigned int row = 0; row < raw->h; row++) {
-		for (unsigned int col = 0; col < raw->w; col++) {
-			uint8_t center_a, north_a, south_a,
-				east_a, west_a, outline_a;
-
-			if (row > 0 && col > 0 && row <= s->h && col <= s->w)
-				center_a = *get_pixel8(s, row - 1, col - 1);
-			else
-				center_a = 0;
-
-			outline_a = center_a;
-
-			if (row >= 2 && col >= 1 && col <= s->w) {
-				north_a = *get_pixel8(s, row - 2, col - 1);
-				outline_a = std::max(outline_a, north_a);
-			}
-
-			if (row <= s->h - 1 && col >= 1 && col <= s->w) {
-				south_a = *get_pixel8(s, row, col - 1);
-				outline_a = std::max(outline_a, south_a);
-			}
-
-			if (row >= 1 && row <= s->h && col <= s->w - 1) {
-				east_a = *get_pixel8(s, row - 1, col);
-				outline_a = std::max(outline_a, east_a);
-			}
-
-			if (row >= 1 && row <= s->h && col >= 2) {
-				west_a = *get_pixel8(s, row - 1, col - 2);
-				outline_a = std::max(outline_a, west_a);
-			}
-
-			*get_pixel32(raw, row, col) =
-				(center_a << 16) | (center_a << 8) |
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				(center_a << 24) | outline_a;
-#else
-				(outline_a << 24) | center_a;
-#endif
-		}
-	}
-
-	SDL_FreeSurface(s);
-
-	return std::unique_ptr<OffscreenSurface>(new OffscreenSurface(raw));
 }

@@ -194,7 +194,7 @@ bool Menu::runAnimations() {
 
 void Menu::paint(Surface &s) {
 	const uint32_t width = s.width(), height = s.height();
-	Font &font = *gmenu2x.font;
+	auto &font = *gmenu2x.font;
 	SurfaceCollection &sc = gmenu2x.sc;
 
 	ConfIntHash &skinConfInt = gmenu2x.skinConfInt;
@@ -346,7 +346,7 @@ vector<unique_ptr<Link>> *Menu::sectionLinks(int i)
 }
 
 void Menu::decSectionIndex() {
-	sectionAnimation.adjust(-1 << 16);
+	sectionAnimation.adjust(-(1 << 16));
 	setSectionIndex(iSection - 1);
 }
 
